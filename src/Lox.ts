@@ -1,7 +1,11 @@
 import * as fs from "fs";
 import * as readline from "readline";
+import { AstPrinter } from "./AstPrinter";
+import { Parser } from "./Parser";
 
 import { Scanner } from "./Scanner";
+import { Token } from "./Token";
+import { TokenType } from "./TokenType";
 
 export class Lox {
   private static hadError = false;
@@ -58,11 +62,13 @@ export class Lox {
   private static run(source: string) {
     const scanner = new Scanner(source);
     const tokens = scanner.scanTokens();
+    const parser = new Parser(tokens);
+    const expression = parser.parse();
 
-    // For now, just print the tokens.
-    for (const token of tokens) {
-      console.log(token.toString());
-    }
+    // Stop if there was a syntax error.
+    if (this.hadError) return;
+
+    console.log(new AstPrinter().print(expression as any));
   }
 
   static error(line: number, message: string) {
@@ -72,5 +78,13 @@ export class Lox {
   private static report(line: number, where: string, message: string) {
     console.error(`[line ${line}] Error${where}: ${message}`);
     Lox.hadError = true;
+  }
+
+  static parseError(token: Token, message: string) {
+    if (token.type === TokenType.EOF) {
+      this.report(token.line, " at end", message);
+    } else {
+      this.report(token.line, ` at '${token.lexeme}''`, message);
+    }
   }
 }
